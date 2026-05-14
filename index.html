@@ -52,8 +52,26 @@
         infoDiv.innerText = "Sistema pronto";
         startBtn.style.display = 'inline-block';
 
-        // Funzione per gestire i drink sul database
+       // Funzione per gestire i drink con controllo prefisso
         async function gestisciLettura(idBadge) {
+            // IMPOSTA QUI IL TUO PREFISSO (es. "04" o "53")
+            const prefissoAutorizzato = "04"; 
+
+            // Controllo se il badge inizia con il numero giusto
+            if (!idBadge.startsWith(prefissoAutorizzato)) {
+                document.body.style.backgroundColor = "#f1c40f"; // Giallo (Attenzione)
+                statusDiv.innerText = "BADGE NON VALIDO";
+                infoDiv.innerText = `Il badge ${idBadge}\nnon appartiene all'evento.`;
+                if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+                
+                setTimeout(() => {
+                    document.body.style.backgroundColor = "white";
+                    statusDiv.innerText = "PRONTO: AVVICINA BADGE";
+                }, 3000);
+                return; // Esce dalla funzione e non salva nulla sul database
+            }
+
+            // Se il controllo passa, procede con il database
             try {
                 const userRef = db.ref('utenti/' + idBadge);
                 const snapshot = await userRef.get();
