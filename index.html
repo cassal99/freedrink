@@ -22,6 +22,11 @@
     <button id="startBtn" style="display:none;">ATTIVA SCANNER</button>
 
     <script>
+        // Questo codice ti mostrerà l'errore in un popup sul telefono
+        window.onerror = function(msg, url, linenumber) {
+        alert('ERRORE JS: ' + msg + '\nLinea: ' + linenumber);
+        return true;
+        };
         // 1. INSERISCI QUI I TUOI DATI DA FIREBASE
         const firebaseConfig = {
               apiKey: "AIzaSyAEGj9hgwY77KhRMbaBlVa7h_oFn5jsOgM",
@@ -34,6 +39,13 @@
               measurementId: "G-SSFSW0MNZ1"
         };
 
+        try {
+            firebase.initializeApp(firebaseConfig);
+            var db = firebase.database();
+            console.log("Firebase inizializzato");
+        } catch (e) {
+            alert("Errore inizializzazione Firebase: " + e.message);
+        }
         // Inizializza Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
