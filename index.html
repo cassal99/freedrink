@@ -3,94 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFC Drink Counter</title>
+    <title>NFC Drink Online</title>
+    <!-- Carichiamo Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; transition: background 0.3s; margin: 0; display: flex; flex-direction: column; height: 100vh; justify-content: center; }
         #status { font-size: 2rem; font-weight: bold; margin: 20px; }
-        #info { font-size: 1.2rem; color: #555; }
+        #info { font-size: 1.2rem; color: #555; white-space: pre-line; }
         button { padding: 15px 30px; font-size: 1.2rem; cursor: pointer; border: none; border-radius: 5px; background: #007bff; color: white; }
     </style>
 </head>
 <body>
 
-    <div id="status">ATTESA AVVIO</div>
-    <div id="info">Premi il tasto per attivare lo scanner</div>
+    <div id="status">CONNETTENDO...</div>
+    <div id="info">Inizializzazione database online</div>
     <br>
-    <button id="startBtn">ATTIVA SCANNER DRINK</button>
+    <button id="startBtn" style="display:none;">ATTIVA SCANNER</button>
 
     <script>
+        // 1. INSERISCI QUI I TUOI DATI DA FIREBASE
+        const firebaseConfig = {
+              apiKey: "AIzaSyAEGj9hgwY77KhRMbaBlVa7h_oFn5jsOgM",
+              authDomain: "drinknfc.firebaseapp.com",
+              databaseURL: "https://drinknfc-default-rtdb.europe-west1.firebasedatabase.app",
+              projectId: "drinknfc",
+              storageBucket: "drinknfc.firebasestorage.app",
+              messagingSenderId: "781441954375",
+              appId: "1:781441954375:web:63b5079a61970696183762",
+              measurementId: "G-SSFSW0MNZ1"
+        };
+
+        // Inizializza Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         const statusDiv = document.getElementById('status');
         const infoDiv = document.getElementById('info');
         const startBtn = document.getElementById('startBtn');
 
-        // Configurazione
         const LIMITE_DRINK = 3;
-        // Usiamo il localStorage per salvare i dati offline nel browser
-        let database = JSON.parse(localStorage.getItem('drinkDB')) || {};
+
+        // Verifica connessione e mostra bottone
+        statusDiv.innerText = "ONLINE";
+        infoDiv.innerText = "Sistema pronto";
+        startBtn.style.display = 'inline-block';
 
         startBtn.addEventListener('click', async () => {
             if ('NDEFReader' in window) {
                 try {
                     const ndef = new NDEFReader();
                     await ndef.scan();
-                    
-                    startBtn.style.display = 'none'; // Nascondi bottone dopo avvio
+                    startBtn.style.display = 'none';
                     statusDiv.innerText = "PRONTO: AVVICINA BADGE";
-                    infoDiv.innerText = "Scanner attivo";
-
-                    ndef.onreading = event => {
-                        const serialNumber = event.serialNumber;
-                        gestisciLettura(serialNumber);
-                    };
-
                 } catch (error) {
-                    statusDiv.innerText = "ERRORE";
-                    infoDiv.innerText = "Permesso negato o NFC disattivato.";
+                    alert("Errore NFC: " + error);
                 }
             } else {
-                statusDiv.innerText = "NON SUPPORTATO";
-                infoDiv.innerText = "Usa Chrome su Android.";
+                alert("NFC non supportato. Usa Chrome su Android.");
             }
         });
 
-        function gestisciLettura(id) {
-            // Se l'ID non esiste nel database, inizializzalo
-            if (!database[id]) {
-                database[id] = 0;
+        // 2. FUNZIONE DI LETTURA ONLINE
+        async function gestisciLettura(idBadge) {
+            const userRef = db.ref('utenti/' + idBadge);
+            
+            // Leggiamo il valore attuale dal cloud
+            const snapshot = await userRef.get();
+            let consumati = 0;
+
+            if (snapshot.exists()) {
+                consumati = snapshot.val().drinkConsumati;
             }
 
-            if (database[id] < LIMITE_DRINK) {
-                database[id]++;
-                localStorage.setItem('drinkDB', JSON.stringify(database)); // Salva
-                mostraRisultato(true, id);
+            if (consumati < LIMITE_DRINK) {
+                const nuoviDrink = consumati + 1;
+                // Aggiorniamo il cloud
+                await userRef.set({
+                    drinkConsumati: nuoviDrink,
+                    ultimoDrink: new Date().toISOString()
+                });
+                mostraRisultato(true, nuoviDrink);
             } else {
-                mostraRisultato(false, id);
+                mostraRisultato(false, consumati);
             }
         }
 
-        function mostraRisultato(successo, id) {
+        // Listener per la lettura NFC
+        if ('NDEFReader' in window) {
+            const ndef = new NDEFReader();
+            ndef.onreading = event => {
+                gestisciLettura(event.serialNumber);
+            };
+        }
+
+        function mostraRisultato(successo, conteggio) {
             if (successo) {
-                document.body.style.backgroundColor = "#2ecc71"; // Verde
-                statusDiv.innerText = "DRINK CONCESSO!";
-                infoDiv.innerText = `Badge: ${id}\nConsumati: ${database[id]} / ${LIMITE_DRINK}`;
-                vibra(200);
+                document.body.style.backgroundColor = "#2ecc71";
+                statusDiv.innerText = "DRINK OK!";
+                infoDiv.innerText = `Consumati: ${conteggio} / ${LIMITE_DRINK}`;
+                if (navigator.vibrate) navigator.vibrate(200);
             } else {
-                document.body.style.backgroundColor = "#e74c3c"; // Rosso
+                document.body.style.backgroundColor = "#e74c3c";
                 statusDiv.innerText = "LIMITE RAGGIUNTO!";
-                infoDiv.innerText = `Badge: ${id}\nHa già bevuto ${LIMITE_DRINK} drink.`;
-                vibra([100, 50, 100, 50, 100]);
+                infoDiv.innerText = `L'utente ha già bevuto ${conteggio} drink.`;
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             }
 
-            // Torna neutro dopo 3 secondi
             setTimeout(() => {
                 document.body.style.backgroundColor = "white";
                 statusDiv.innerText = "AVVICINA BADGE";
-                infoDiv.innerText = "Scanner attivo...";
             }, 3000);
-        }
-
-        function vibra(pattern) {
-            if (navigator.vibrate) navigator.vibrate(pattern);
         }
     </script>
 </body>
