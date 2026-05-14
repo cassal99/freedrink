@@ -50,10 +50,10 @@
         startBtn.style.display = 'inline-block';
 
         startBtn.addEventListener('click', async () => {
-            if ('NDEFReader' in window) {
+            if ('Reader' in window) {
                 try {
-                    const ndef = new NDEFReader();
-                    await ndef.scan();
+                    const  = new Reader();
+                    await .scan();
                     startBtn.style.display = 'none';
                     statusDiv.innerText = "PRONTO: AVVICINA BADGE";
                 } catch (error) {
@@ -93,6 +93,8 @@
         if ('NDEFReader' in window) {
             const ndef = new NDEFReader();
             ndef.onreading = event => {
+                console.log("Lettura rilevata!");
+                alert("Badge rilevato: " + event.serialNumber);
                 gestisciLettura(event.serialNumber);
             };
         }
