@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFC Drink Counter</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; transition: background 0.3s; margin: 0; display: flex; flex-direction: column; height: 100vh; justify-content: center; }
+        #status { font-size: 2rem; font-weight: bold; margin: 20px; }
+        #info { font-size: 1.2rem; color: #555; }
+        button { padding: 15px 30px; font-size: 1.2rem; cursor: pointer; border: none; border-radius: 5px; background: #007bff; color: white; }
+    </style>
+</head>
+<body>
+
+    <div id="status">ATTESA AVVIO</div>
+    <div id="info">Premi il tasto per attivare lo scanner</div>
+    <br>
+    <button id="startBtn">ATTIVA SCANNER DRINK</button>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const infoDiv = document.getElementById('info');
+        const startBtn = document.getElementById('startBtn');
+
+        // Configurazione
+        const LIMITE_DRINK = 3;
+        // Usiamo il localStorage per salvare i dati offline nel browser
+        let database = JSON.parse(localStorage.getItem('drinkDB')) || {};
+
+        startBtn.addEventListener('click', async () => {
+            if ('NDEFReader' in window) {
+                try {
+                    const ndef = new NDEFReader();
+                    await ndef.scan();
+                    
+                    startBtn.style.display = 'none'; // Nascondi bottone dopo avvio
+                    statusDiv.innerText = "PRONTO: AVVICINA BADGE";
+                    infoDiv.innerText = "Scanner attivo";
+
+                    ndef.onreading = event => {
+                        const serialNumber = event.serialNumber;
+                        gestisciLettura(serialNumber);
+                    };
+
+                } catch (error) {
+                    statusDiv.innerText = "ERRORE";
+                    infoDiv.innerText = "Permesso negato o NFC disattivato.";
+                }
+            } else {
+                statusDiv.innerText = "NON SUPPORTATO";
+                infoDiv.innerText = "Usa Chrome su Android.";
+            }
+        });
+
+        function gestisciLettura(id) {
+            // Se l'ID non esiste nel database, inizializzalo
+            if (!database[id]) {
+                database[id] = 0;
+            }
+
+            if (database[id] < LIMITE_DRINK) {
+                database[id]++;
+                localStorage.setItem('drinkDB', JSON.stringify(database)); // Salva
+                mostraRisultato(true, id);
+            } else {
+                mostraRisultato(false, id);
+            }
+        }
+
+        function mostraRisultato(successo, id) {
+            if (successo) {
+                document.body.style.backgroundColor = "#2ecc71"; // Verde
+                statusDiv.innerText = "DRINK CONCESSO!";
+                infoDiv.innerText = `Badge: ${id}\nConsumati: ${database[id]} / ${LIMITE_DRINK}`;
+                vibra(200);
+            } else {
+                document.body.style.backgroundColor = "#e74c3c"; // Rosso
+                statusDiv.innerText = "LIMITE RAGGIUNTO!";
+                infoDiv.innerText = `Badge: ${id}\nHa già bevuto ${LIMITE_DRINK} drink.`;
+                vibra([100, 50, 100, 50, 100]);
+            }
+
+            // Torna neutro dopo 3 secondi
+            setTimeout(() => {
+                document.body.style.backgroundColor = "white";
+                statusDiv.innerText = "AVVICINA BADGE";
+                infoDiv.innerText = "Scanner attivo...";
+            }, 3000);
+        }
+
+        function vibra(pattern) {
+            if (navigator.vibrate) navigator.vibrate(pattern);
+        }
+    </script>
+</body>
+</html>
