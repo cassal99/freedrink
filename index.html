@@ -15,34 +15,39 @@
             flex-direction: column; 
             height: 100vh; 
             justify-content: center;
+            /* Sfondo Blu Eurospin di base invece del bianco */
+            background-color: #004a99;
             /* Sfondo con Logo Eurospin */
             background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Logo_Eurospin.svg/1200px-Logo_Eurospin.svg.png');
             background-repeat: no-repeat;
-            background-position: center 10%; 
-            background-size: 200px; 
+            background-position: center 15%; 
+            background-size: 240px; 
         }
         
-        /* Velatura per garantire la leggibilità del testo */
+        /* Velatura gialla/blu soft opzionale per i testi, oppure trasparente per non coprire il blu */
         body::before {
             content: "";
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.8); 
+            background: rgba(0, 74, 153, 0.6); /* Velatura blu scuro che si fonde con lo sfondo */
             z-index: -1;
         }
 
-        #status { font-size: 2rem; font-weight: bold; margin: 20px; z-index: 1; }
-        #info { font-size: 1.2rem; color: #333; white-space: pre-line; z-index: 1; font-weight: 500; }
+        /* Testi bianchi e gialli per risaltare sul blu Eurospin */
+        #status { font-size: 2.2rem; font-weight: bold; margin: 20px; z-index: 1; color: #ffdd00; }
+        #info { font-size: 1.3rem; color: #ffffff; white-space: pre-line; z-index: 1; font-weight: 500; }
+        
         button { 
             padding: 15px 30px; 
             font-size: 1.2rem; 
             cursor: pointer; 
-            border: none; 
+            border: 2px solid #ffffff; 
             border-radius: 5px; 
-            background: #004a99; /* Blu Eurospin */
-            color: white; 
+            background: #ffdd00; /* Pulsante Giallo Eurospin */
+            color: #004a99; /* Testo Blu */
             z-index: 1;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -54,64 +59,56 @@
     <button id="startBtn">ATTIVA SCANNER</button>
 
     <script>
-        // Gestione errori visibile sul display del telefono
         window.onerror = function(msg, url, linenumber) {
             alert('ERRORE JS: ' + msg + '\nLinea: ' + linenumber);
             return true;
         };
-        // Registrazione del Service Worker per sbloccare l'installazione
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-        .then(() => console.log('Service Worker Registrato!'))
-        .catch(err => console.log('Errore SW:', err));
-}
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(() => console.log('Service Worker Registrato!'))
+                .catch(err => console.log('Errore SW:', err));
+        }
 
         const statusDiv = document.getElementById('status');
         const infoDiv = document.getElementById('info');
         const startBtn = document.getElementById('startBtn');
         
-        // CONFIGURAZIONE APPLICAZIONE
         const LIMITE_DRINK = 1;
-        const prefissoAutorizzato = "04"; // Cambialo con il prefisso dei tuoi badge
+        const prefissoAutorizzato = "04"; 
 
-        // DATABASE IN LOCALE (inizializza il database vuoto se non esiste)
         let databaseLocale = JSON.parse(localStorage.getItem('eurospinDrinkDB')) || {};
 
-        // Funzione di logica offline
         function gestisciLettura(idBadge) {
-            // 1. Controllo Prefisso Carta
             if (!idBadge.startsWith(prefissoAutorizzato)) {
-                document.body.style.backgroundColor = "#f1c40f"; // Giallo
+                document.body.style.backgroundColor = "#f1c40f"; // Giallo Attenzione
+                statusDiv.style.color = "#000000";
+                infoDiv.style.color = "#000000";
                 statusDiv.innerText = "BADGE NON VALIDO";
                 infoDiv.innerText = `Badge: ${idBadge}\nNon appartiene a Eurospin.`;
                 if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
                 
                 setTimeout(() => {
-                    document.body.style.backgroundColor = "transparent";
-                    statusDiv.innerText = "PRONTO: AVVICINA BADGE";
-                    infoDiv.innerText = "Scanner attivo (Offline)...";
+                    ripristinaSchermataStato}$;
                 }, 3000);
                 return;
             }
 
-            // 2. Controllo e incremento dei drink nel database locale
             if (!databaseLocale[idBadge]) {
-                databaseLocale[idBadge] = 0; // Inizializza a 0 se è la prima volta che si vede questa carta
+                databaseLocale[idBadge] = 0;
             }
 
             let consumati = databaseLocale[idBadge];
 
             if (consumati < LIMITE_DRINK) {
-                databaseLocale[idBadge]++; // Incrementa il drink
-                localStorage.setItem('eurospinDrinkDB', JSON.stringify(databaseLocale)); // Salva permanentemente sul telefono
-                
+                databaseLocale[idBadge]++; 
+                localStorage.setItem('eurospinDrinkDB', JSON.stringify(databaseLocale)); 
                 mostraRisultato(true, databaseLocale[idBadge], idBadge);
             } else {
                 mostraRisultato(false, consumati, idBadge);
             }
         }
 
-        // Attivazione sensore NFC
         startBtn.addEventListener('click', async () => {
             if ('NDEFReader' in window) {
                 try {
@@ -124,7 +121,7 @@ if ('serviceWorker' in navigator) {
 
                     ndef.onreading = event => {
                         const serialNumber = event.serialNumber;
-                        if (navigator.vibrate) navigator.vibrate(100); // Feedback immediato al tocco
+                        if (navigator.vibrate) navigator.vibrate(100); 
                         gestisciLettura(serialNumber);
                     };
 
@@ -138,11 +135,15 @@ if ('serviceWorker' in navigator) {
 
         function mostraRisultato(successo, conteggio, id) {
             if (successo) {
-                document.body.style.backgroundColor = "#2ecc71"; // Verde
+                document.body.style.backgroundColor = "#2ecc71"; // Verde OK
+                statusDiv.style.color = "#ffffff";
+                infoDiv.style.color = "#ffffff";
                 statusDiv.innerText = "DRINK OK!";
                 infoDiv.innerText = `Badge: ${id}\nConsumati: ${conteggio} / ${LIMITE_DRINK}`;
             } else {
-                document.body.style.backgroundColor = "#e74c3c"; // Rosso
+                document.body.style.backgroundColor = "#e74c3c"; // Rosso Stop
+                statusDiv.style.color = "#ffffff";
+                infoDiv.style.color = "#ffffff";
                 statusDiv.innerText = "LIMITE RAGGIUNTO!";
                 infoDiv.innerText = `Badge: ${id}\nHa già consumato ${conteggio} drink.`;
             }
@@ -150,10 +151,17 @@ if ('serviceWorker' in navigator) {
             if (navigator.vibrate) navigator.vibrate(successo ? 200 : [100, 50, 100]);
 
             setTimeout(() => {
-                document.body.style.backgroundColor = "transparent";
-                statusDiv.innerText = "PRONTO: AVVICINA BADGE";
-                infoDiv.innerText = "Scanner attivo (Offline)...";
+                ripristinaSchermataStato();
             }, 3000);
+        }
+
+        // Funzione per resettare i colori aziendali Eurospin a schermo intero
+        function ripristinaSchermataStato() {
+            document.body.style.backgroundColor = "#004a99"; // Ritorna al blu Eurospin
+            statusDiv.style.color = "#ffdd00"; // Testo Giallo
+            infoDiv.style.color = "#ffffff"; // Testo Bianco
+            statusDiv.innerText = "PRONTO: AVVICINA BADGE";
+            infoDiv.innerText = "Scanner attivo (Offline)...";
         }
     </script>
 </body>
