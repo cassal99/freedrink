@@ -59,6 +59,12 @@
             alert('ERRORE JS: ' + msg + '\nLinea: ' + linenumber);
             return true;
         };
+        // Registrazione del Service Worker per sbloccare l'installazione
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log('Service Worker Registrato!'))
+        .catch(err => console.log('Errore SW:', err));
+}
 
         const statusDiv = document.getElementById('status');
         const infoDiv = document.getElementById('info');
