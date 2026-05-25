@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFC Drink Online - Eurospin</title>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <title>NFC Drink Offline - Eurospin</title>
     <style>
         body { 
             font-family: sans-serif; 
@@ -16,19 +14,19 @@
             flex-direction: column; 
             height: 100vh; 
             justify-content: center;
-            /* Sfondo con Logo */
+            /* Sfondo con Logo Eurospin */
             background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Logo_Eurospin.svg/1200px-Logo_Eurospin.svg.png');
             background-repeat: no-repeat;
-            background-position: center 10%; /* Posizionato in alto al centro */
-            background-size: 200px; /* Dimensione del logo */
+            background-position: center 10%; 
+            background-size: 200px; 
         }
         
-        /* Overlay per rendere lo sfondo meno invasivo se necessario */
+        /* Velatura per garantire la leggibilità del testo */
         body::before {
             content: "";
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.8); /* Velatura bianca per leggere meglio i testi */
+            background: rgba(255, 255, 255, 0.8); 
             z-index: -1;
         }
 
@@ -49,96 +47,105 @@
 </head>
 <body>
 
-    <div id="status">CONNETTENDO...</div>
-    <div id="info">Inizializzazione database online</div>
+    <div id="status">ATTESA AVVIO</div>
+    <div id="info">Premi il tasto per attivare lo scanner offline</div>
     <br>
-    <button id="startBtn" style="display:none;">ATTIVA SCANNER</button>
+    <button id="startBtn">ATTIVA SCANNER</button>
 
     <script>
+        // Gestione errori visibile sul display del telefono
         window.onerror = function(msg, url, linenumber) {
             alert('ERRORE JS: ' + msg + '\nLinea: ' + linenumber);
             return true;
         };
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAEGj9hgwY77KhRMbaBlVa7h_oFn5jsOgM",
-            authDomain: "drinknfc.firebaseapp.com",
-            databaseURL: "https://drinknfc-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "drinknfc",
-            storageBucket: "drinknfc.firebasestorage.app",
-            messagingSenderId: "781441954375",
-            appId: "1:781441954375:web:63b5079a61970696183762"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
         const statusDiv = document.getElementById('status');
         const infoDiv = document.getElementById('info');
         const startBtn = document.getElementById('startBtn');
-        const LIMITE_DRINK = 1;
+        
+        // CONFIGURAZIONE APPLICAZIONE
+        const LIMITE_DRINK = 3;
+        const prefissoAutorizzato = "04"; // Cambialo con il prefisso dei tuoi badge
 
-        statusDiv.innerText = "ONLINE";
-        infoDiv.innerText = "Sistema pronto";
-        startBtn.style.display = 'inline-block';
+        // DATABASE IN LOCALE (inizializza il database vuoto se non esiste)
+        let databaseLocale = JSON.parse(localStorage.getItem('eurospinDrinkDB')) || {};
 
-        async function gestisciLettura(idBadge) {
-            const prefissoAutorizzato = "04"; // Modifica con il tuo prefisso reale
-
+        // Funzione di logica offline
+        function gestisciLettura(idBadge) {
+            // 1. Controllo Prefisso Carta
             if (!idBadge.startsWith(prefissoAutorizzato)) {
-                document.body.style.backgroundColor = "#f1c40f";
+                document.body.style.backgroundColor = "#f1c40f"; // Giallo
                 statusDiv.innerText = "BADGE NON VALIDO";
-                infoDiv.innerText = `Badge: ${idBadge}\nNon autorizzato.`;
+                infoDiv.innerText = `Badge: ${idBadge}\nNon appartiene a Eurospin.`;
                 if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-                setTimeout(() => { document.body.style.backgroundColor = "transparent"; statusDiv.innerText = "PRONTO: AVVICINA BADGE"; }, 3000);
+                
+                setTimeout(() => {
+                    document.body.style.backgroundColor = "transparent";
+                    statusDiv.innerText = "PRONTO: AVVICINA BADGE";
+                    infoDiv.innerText = "Scanner attivo (Offline)...";
+                }, 3000);
                 return;
             }
 
-            try {
-                const userRef = db.ref('utenti/' + idBadge);
-                const snapshot = await userRef.get();
-                let consumati = snapshot.exists() ? snapshot.val().drinkConsumati : 0;
+            // 2. Controllo e incremento dei drink nel database locale
+            if (!databaseLocale[idBadge]) {
+                databaseLocale[idBadge] = 0; // Inizializza a 0 se è la prima volta che si vede questa carta
+            }
 
-                if (consumati < LIMITE_DRINK) {
-                    const nuoviDrink = consumati + 1;
-                    await userRef.set({ drinkConsumati: nuoviDrink, ultimoDrink: new Date().toISOString() });
-                    mostraRisultato(true, nuoviDrink, idBadge);
-                } else {
-                    mostraRisultato(false, consumati, idBadge);
-                }
-            } catch (e) { alert("Errore Database: " + e.message); }
+            let consumati = databaseLocale[idBadge];
+
+            if (consumati < LIMITE_DRINK) {
+                databaseLocale[idBadge]++; // Incrementa il drink
+                localStorage.setItem('eurospinDrinkDB', JSON.stringify(databaseLocale)); // Salva permanentemente sul telefono
+                
+                mostraRisultato(true, databaseLocale[idBadge], idBadge);
+            } else {
+                mostraRisultato(false, consumati, idBadge);
+            }
         }
 
+        // Attivazione sensore NFC
         startBtn.addEventListener('click', async () => {
             if ('NDEFReader' in window) {
                 try {
                     const ndef = new NDEFReader();
                     await ndef.scan();
+                    
                     startBtn.style.display = 'none';
                     statusDiv.innerText = "PRONTO: AVVICINA BADGE";
-                    infoDiv.innerText = "Scanner attivo...";
+                    infoDiv.innerText = "Scanner attivo (Offline)...";
+
                     ndef.onreading = event => {
-                        if (navigator.vibrate) navigator.vibrate(100);
-                        gestisciLettura(event.serialNumber);
+                        const serialNumber = event.serialNumber;
+                        if (navigator.vibrate) navigator.vibrate(100); // Feedback immediato al tocco
+                        gestisciLettura(serialNumber);
                     };
-                } catch (error) { alert("Errore NFC: " + error); }
-            } else { alert("NFC non supportato."); }
+
+                } catch (error) {
+                    alert("Errore NFC: " + error);
+                }
+            } else {
+                alert("NFC non supportato su questo browser/dispositivo.");
+            }
         });
 
         function mostraRisultato(successo, conteggio, id) {
             if (successo) {
-                document.body.style.backgroundColor = "#2ecc71";
+                document.body.style.backgroundColor = "#2ecc71"; // Verde
                 statusDiv.innerText = "DRINK OK!";
                 infoDiv.innerText = `Badge: ${id}\nConsumati: ${conteggio} / ${LIMITE_DRINK}`;
             } else {
-                document.body.style.backgroundColor = "#e74c3c";
+                document.body.style.backgroundColor = "#e74c3c"; // Rosso
                 statusDiv.innerText = "LIMITE RAGGIUNTO!";
-                infoDiv.innerText = `Badge: ${id}\nGià consumati ${conteggio} drink.`;
+                infoDiv.innerText = `Badge: ${id}\nHa già consumato ${conteggio} drink.`;
             }
+            
             if (navigator.vibrate) navigator.vibrate(successo ? 200 : [100, 50, 100]);
+
             setTimeout(() => {
                 document.body.style.backgroundColor = "transparent";
                 statusDiv.innerText = "PRONTO: AVVICINA BADGE";
+                infoDiv.innerText = "Scanner attivo (Offline)...";
             }, 3000);
         }
     </script>
