@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eurospin-nfc-v1';
+const CACHE_NAME = 'eurospin-nfc-v3'; // Cambiamo la versione in v3 per forzare il telefono ad aggiornarsi!
 const ASSETS = [
   './',
   './index.html',
