@@ -3,12 +3,13 @@
   "name": "Eurospin NFC Drink Counter",
   "icons": [
     {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Logo_Eurospin.svg/1200px-Logo_Eurospin.svg.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/5759/5759325.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": "index.html",
+  "start_url": "./index.html",
   "background_color": "#ffffff",
   "theme_color": "#004a99",
   "display": "standalone",
