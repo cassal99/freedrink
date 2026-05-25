@@ -15,7 +15,7 @@
             flex-direction: column; 
             height: 100vh; 
             justify-content: center;
-            /* Sfondo Blu Eurospin di base invece del bianco */
+            /* Sfondo Blu Eurospin */
             background-color: #004a99;
             /* Sfondo con Logo Eurospin */
             background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Logo_Eurospin.svg/1200px-Logo_Eurospin.svg.png');
@@ -24,16 +24,14 @@
             background-size: 240px; 
         }
         
-        /* Velatura gialla/blu soft opzionale per i testi, oppure trasparente per non coprire il blu */
         body::before {
             content: "";
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 74, 153, 0.6); /* Velatura blu scuro che si fonde con lo sfondo */
+            background: rgba(0, 74, 153, 0.6); 
             z-index: -1;
         }
 
-        /* Testi bianchi e gialli per risaltare sul blu Eurospin */
         #status { font-size: 2.2rem; font-weight: bold; margin: 20px; z-index: 1; color: #ffdd00; }
         #info { font-size: 1.3rem; color: #ffffff; white-space: pre-line; z-index: 1; font-weight: 500; }
         
@@ -43,8 +41,8 @@
             cursor: pointer; 
             border: 2px solid #ffffff; 
             border-radius: 5px; 
-            background: #ffdd00; /* Pulsante Giallo Eurospin */
-            color: #004a99; /* Testo Blu */
+            background: #ffdd00; /* Giallo Eurospin */
+            color: #004a99; 
             z-index: 1;
             font-weight: bold;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
@@ -81,7 +79,7 @@
 
         function gestisciLettura(idBadge) {
             if (!idBadge.startsWith(prefissoAutorizzato)) {
-                document.body.style.backgroundColor = "#f1c40f"; // Giallo Attenzione
+                document.body.style.backgroundColor = "#f1c40f"; // Giallo
                 statusDiv.style.color = "#000000";
                 infoDiv.style.color = "#000000";
                 statusDiv.innerText = "BADGE NON VALIDO";
@@ -89,7 +87,7 @@
                 if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
                 
                 setTimeout(() => {
-                    ripristinaSchermataStato}$;
+                    ripristinaSchermataStato();
                 }, 3000);
                 return;
             }
@@ -135,13 +133,13 @@
 
         function mostraRisultato(successo, conteggio, id) {
             if (successo) {
-                document.body.style.backgroundColor = "#2ecc71"; // Verde OK
+                document.body.style.backgroundColor = "#2ecc71"; // Verde
                 statusDiv.style.color = "#ffffff";
                 infoDiv.style.color = "#ffffff";
                 statusDiv.innerText = "DRINK OK!";
                 infoDiv.innerText = `Badge: ${id}\nConsumati: ${conteggio} / ${LIMITE_DRINK}`;
             } else {
-                document.body.style.backgroundColor = "#e74c3c"; // Rosso Stop
+                document.body.style.backgroundColor = "#e74c3c"; // Rosso
                 statusDiv.style.color = "#ffffff";
                 infoDiv.style.color = "#ffffff";
                 statusDiv.innerText = "LIMITE RAGGIUNTO!";
@@ -155,11 +153,10 @@
             }, 3000);
         }
 
-        // Funzione per resettare i colori aziendali Eurospin a schermo intero
         function ripristinaSchermataStato() {
-            document.body.style.backgroundColor = "#004a99"; // Ritorna al blu Eurospin
-            statusDiv.style.color = "#ffdd00"; // Testo Giallo
-            infoDiv.style.color = "#ffffff"; // Testo Bianco
+            document.body.style.backgroundColor = "#004a99"; 
+            statusDiv.style.color = "#ffdd00"; 
+            infoDiv.style.color = "#ffffff"; 
             statusDiv.innerText = "PRONTO: AVVICINA BADGE";
             infoDiv.innerText = "Scanner attivo (Offline)...";
         }
