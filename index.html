@@ -6,23 +6,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>NFC Drink Offline - Eurospin</title>
     <style>
+        /* Blocco totale dello zoom e dello scroll nativo su tutta la PWA */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none; 
+        }
+
         body { 
             font-family: sans-serif; 
             text-align: center; 
             transition: background 0.3s; 
-            margin: 0; 
             display: flex; 
             flex-direction: column; 
-            height: 100vh; 
             justify-content: center;
+            position: relative; /* Garantisce il corretto posizionamento dell'area segreta */
             background-color: #004a99;
             background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Logo_Eurospin.svg/1200px-Logo_Eurospin.svg.png');
             background-repeat: no-repeat;
             background-position: center 15%; 
             background-size: 240px; 
             
-            /* Blocca il pinch-to-zoom e la selezione del testo/evidenziazione fastidiosa */
-            touch-action: pan-x pan-y;
             user-select: none;
             -webkit-user-select: none;
             -webkit-touch-callout: none;
@@ -65,12 +72,13 @@
             letter-spacing: 0.5px;
         }
 
+        /* Area segreta nell'angolo in basso a sinistra */
         #secretZone {
             position: absolute;
             bottom: 0;
             left: 0;
-            width: 80px;
-            height: 80px;
+            width: 85px;
+            height: 85px;
             z-index: 999;
             background: transparent;
         }
@@ -249,17 +257,22 @@
             aggiornaStatistiche(); 
         }
 
-        // Sicurezza extra via JavaScript per bloccare il pinch multigesture (utile per alcuni dispositivi iOS/Android ostinati)
-        document.addEventListener('touchstart', function (event) {
-            if (event.touches.length > 1) {
+        // Forza il blocco del double-tap-to-zoom anche a livello software profondo
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
                 event.preventDefault();
             }
-        }, { passive: false });
+            lastTouchEnd = now;
+        }, false);
 
+        // Gestione Menu Segreto tramite intercettazione Touch istantanea
         let resetClicks = 0;
         let resetTimer;
 
-        secretZone.addEventListener('click', () => {
+        secretZone.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Impedisce al browser di interpretare il gesto o fare ghost-click
             resetClicks++;
             clearTimeout(resetTimer);
 
@@ -269,7 +282,7 @@
             } else {
                 resetTimer = setTimeout(() => {
                     resetClicks = 0;
-                }, 2000);
+                }, 1500); // Finestra temporale di 1.5 secondi per completare i tocchi
             }
         });
 
