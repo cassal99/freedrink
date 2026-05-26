@@ -59,7 +59,6 @@
             letter-spacing: 0.5px;
         }
 
-        /* Area segreta invisibile nell'angolo in basso a sinistra */
         #secretZone {
             position: absolute;
             bottom: 0;
@@ -68,6 +67,64 @@
             height: 80px;
             z-index: 999;
             background: transparent;
+        }
+
+        /* Schermata di reset personalizzata (Modal Eurospin) */
+        .custom-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 74, 153, 0.95);
+            z-index: 1000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            border: 3px solid #ffdd00;
+            background: #004a99;
+            padding: 25px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 350px;
+            color: #ffffff;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        .modal-content h3 {
+            color: #ffdd00;
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+
+        .modal-content p {
+            font-size: 1.1rem;
+            line-height: 1.4;
+            margin-bottom: 25px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .btn-modal {
+            padding: 10px 20px;
+            font-size: 1rem;
+            min-width: 110px;
+        }
+
+        .btn-cancel {
+            background: #ffffff;
+            color: #004a99;
+        }
+
+        .btn-confirm {
+            background: #e74c3c;
+            color: #ffffff;
+            border-color: #ffffff;
         }
     </style>
 </head>
@@ -79,8 +136,18 @@
     <button id="startBtn">ATTIVA SCANNER</button>
 
     <div id="stats"></div>
-    
     <div id="secretZone"></div>
+
+    <div id="resetModal" class="custom-modal">
+        <div class="modal-content">
+            <h3>⚠️ RESET MEMORIA</h3>
+            <p>Vuoi cancellare definitivamente tutti i drink erogati e azzerare i contatori della serata?</p>
+            <div class="modal-actions">
+                <button id="cancelResetBtn" class="btn-modal btn-cancel">ANNULLA</button>
+                <button id="confirmResetBtn" class="btn-modal btn-confirm">AZZERA</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         window.onerror = function(msg, url, linenumber) {
@@ -99,6 +166,9 @@
         const startBtn = document.getElementById('startBtn');
         const statsDiv = document.getElementById('stats');
         const secretZone = document.getElementById('secretZone');
+        const resetModal = document.getElementById('resetModal');
+        const cancelResetBtn = document.getElementById('cancelResetBtn');
+        const confirmResetBtn = document.getElementById('confirmResetBtn');
 
         let databaseLocale = JSON.parse(localStorage.getItem('eurospinDrinkDB')) || {};
 
@@ -109,14 +179,15 @@
         }
 
         function gestisciLettura(idBadge) {
-            if (!databaseLocale[idBadge]) {
-                databaseLocale[idBadge] = 0;
+            // Se il badge esiste già in memoria significa che è un DUPLICATO
+            if (databaseLocale[idBadge] !== undefined) {
+                mostraRisultato(false, databaseLocale[idBadge], idBadge);
+            } else {
+                // Primo passaggio: assegna i 3 drink stabiliti
+                databaseLocale[idBadge] = 3; 
+                localStorage.setItem('eurospinDrinkDB', JSON.stringify(databaseLocale)); 
+                mostraRisultato(true, databaseLocale[idBadge], idBadge);
             }
-
-            databaseLocale[idBadge] += 3; 
-            localStorage.setItem('eurospinDrinkDB', JSON.stringify(databaseLocale)); 
-            
-            mostraRisultato(databaseLocale[idBadge], idBadge);
         }
 
         startBtn.addEventListener('click', async () => {
@@ -144,14 +215,22 @@
             }
         });
 
-        function mostraRisultato(conteggio, id) {
-            document.body.style.backgroundColor = "#2ecc71"; 
-            statusDiv.style.color = "#ffffff";
-            infoDiv.style.color = "#ffffff";
-            statusDiv.innerText = "+3 DRINK AGGIUNTI!";
-            infoDiv.innerText = `Badge: ${id}\nTotale questo badge: ${conteggio}`;
-            
-            if (navigator.vibrate) navigator.vibrate(200);
+        function mostraRisultato(successo, conteggio, id) {
+            if (successo) {
+                document.body.style.backgroundColor = "#2ecc71"; // Verde OK
+                statusDiv.style.color = "#ffffff";
+                infoDiv.style.color = "#ffffff";
+                statusDiv.innerText = "+3 DRINK AGGIUNTI!";
+                infoDiv.innerText = `Badge: ${id}\nTotale questo badge: ${conteggio}`;
+                if (navigator.vibrate) navigator.vibrate(200);
+            } else {
+                document.body.style.backgroundColor = "#e74c3c"; // Rosso STOP
+                statusDiv.style.color = "#ffffff";
+                infoDiv.style.color = "#ffffff";
+                statusDiv.innerText = "GIÀ PASSATO!";
+                infoDiv.innerText = `Badge: ${id}\nQuesto badge ha già ricevuto i suoi 3 drink.`;
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            }
 
             setTimeout(() => {
                 ripristinaSchermataStato();
@@ -167,7 +246,7 @@
             aggiornaStatistiche(); 
         }
 
-        // LOGICA DEL MENU SEGRETO DI RESET (5 Clic in basso a sinistra)
+        // GESTIONE MENU SEGRETO CON INTERFACCIA COORDINATA
         let resetClicks = 0;
         let resetTimer;
 
@@ -177,20 +256,33 @@
 
             if (resetClicks === 5) {
                 resetClicks = 0;
-                // Finestra di conferma per evitare tocchi accidentali
-                const conferma = confirm("⚠️ AZZERAMENTO TOTALI\n\nVuoi cancellare definitivamente tutta la memoria dei drink e dei badge passati?");
-                if (conferma) {
-                    localStorage.removeItem('eurospinDrinkDB');
-                    databaseLocale = {};
-                    aggiornaStatistiche();
-                    alert("Database azzerato. I contatori sono tornati a 0!");
-                }
+                resetModal.style.display = 'flex'; // Apre la finestra coordinata Eurospin
             } else {
-                // Se passano più di 2 secondi senza cliccare, il conteggio si azzera
                 resetTimer = setTimeout(() => {
                     resetClicks = 0;
                 }, 2000);
             }
+        });
+
+        cancelResetBtn.addEventListener('click', () => {
+            resetModal.style.display = 'none';
+        });
+
+        confirmResetBtn.addEventListener('click', () => {
+            localStorage.removeItem('eurospinDrinkDB');
+            databaseLocale = {};
+            resetModal.style.display = 'none';
+            
+            // Notifica visiva di avvenuto azzeramento integrata nell'interfaccia
+            document.body.style.backgroundColor = "#ffdd00"; // Schermata Gialla temporanea
+            statusDiv.style.color = "#004a99";
+            infoDiv.style.color = "#004a99";
+            statusDiv.innerText = "MEMORIA AZZERATA";
+            infoDiv.innerText = "Tutti i contatori sono tornati a 0";
+            
+            setTimeout(() => {
+                ripristinaSchermataStato();
+            }, 2500);
         });
     </script>
 </body>
