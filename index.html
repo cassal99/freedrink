@@ -47,7 +47,6 @@
             margin: 0 auto;
         }
 
-        /* Stile per il contatore in fondo allo schermo */
         #stats {
             position: absolute;
             bottom: 25px;
@@ -59,6 +58,17 @@
             z-index: 1;
             letter-spacing: 0.5px;
         }
+
+        /* Area segreta invisibile nell'angolo in basso a sinistra */
+        #secretZone {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 80px;
+            height: 80px;
+            z-index: 999;
+            background: transparent;
+        }
     </style>
 </head>
 <body>
@@ -69,6 +79,8 @@
     <button id="startBtn">ATTIVA SCANNER</button>
 
     <div id="stats"></div>
+    
+    <div id="secretZone"></div>
 
     <script>
         window.onerror = function(msg, url, linenumber) {
@@ -86,13 +98,10 @@
         const infoDiv = document.getElementById('info');
         const startBtn = document.getElementById('startBtn');
         const statsDiv = document.getElementById('stats');
-        
-        const LIMITE_DRINK = 1;
-        const prefissoAutorizzato = "04"; 
+        const secretZone = document.getElementById('secretZone');
 
         let databaseLocale = JSON.parse(localStorage.getItem('eurospinDrinkDB')) || {};
 
-        // Funzione per calcolare e mostrare i totali a schermo
         function aggiornaStatistiche() {
             const badgeTotali = Object.keys(databaseLocale).length;
             const drinkTotali = Object.values(databaseLocale).reduce((a, b) => a + b, 0);
@@ -100,33 +109,14 @@
         }
 
         function gestisciLettura(idBadge) {
-            if (!idBadge.startsWith(prefissoAutorizzato)) {
-                document.body.style.backgroundColor = "#f1c40f"; 
-                statusDiv.style.color = "#000000";
-                infoDiv.style.color = "#000000";
-                statusDiv.innerText = "BADGE NON VALIDO";
-                infoDiv.innerText = `Badge: ${idBadge}\nNon appartiene a Eurospin.`;
-                if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-                
-                setTimeout(() => {
-                    ripristinaSchermataStato();
-                }, 3000);
-                return;
-            }
-
             if (!databaseLocale[idBadge]) {
                 databaseLocale[idBadge] = 0;
             }
 
-            let consumati = databaseLocale[idBadge];
-
-            if (consumati < LIMITE_DRINK) {
-                databaseLocale[idBadge]++; 
-                localStorage.setItem('eurospinDrinkDB', JSON.stringify(databaseLocale)); 
-                mostraRisultato(true, databaseLocale[idBadge], idBadge);
-            } else {
-                mostraRisultato(false, consumati, idBadge);
-            }
+            databaseLocale[idBadge] += 3; 
+            localStorage.setItem('eurospinDrinkDB', JSON.stringify(databaseLocale)); 
+            
+            mostraRisultato(databaseLocale[idBadge], idBadge);
         }
 
         startBtn.addEventListener('click', async () => {
@@ -138,7 +128,7 @@
                     startBtn.style.display = 'none';
                     statusDiv.innerText = "PRONTO: AVVICINA BADGE";
                     infoDiv.innerText = "Scanner attivo (Offline)...";
-                    aggiornaStatistiche(); // Mostra i contatori all'avvio dello scanner
+                    aggiornaStatistiche();
 
                     ndef.onreading = event => {
                         const serialNumber = event.serialNumber;
@@ -154,22 +144,14 @@
             }
         });
 
-        function mostraRisultato(successo, conteggio, id) {
-            if (successo) {
-                document.body.style.backgroundColor = "#2ecc71"; 
-                statusDiv.style.color = "#ffffff";
-                infoDiv.style.color = "#ffffff";
-                statusDiv.innerText = "DRINK OK!";
-                infoDiv.innerText = `Badge: ${id}\nConsumati: ${conteggio} / ${LIMITE_DRINK}`;
-            } else {
-                document.body.style.backgroundColor = "#e74c3c"; 
-                statusDiv.style.color = "#ffffff";
-                infoDiv.style.color = "#ffffff";
-                statusDiv.innerText = "LIMITE RAGGIUNTO!";
-                infoDiv.innerText = `Badge: ${id}\nHa già consumato ${conteggio} drink.`;
-            }
+        function mostraRisultato(conteggio, id) {
+            document.body.style.backgroundColor = "#2ecc71"; 
+            statusDiv.style.color = "#ffffff";
+            infoDiv.style.color = "#ffffff";
+            statusDiv.innerText = "+3 DRINK AGGIUNTI!";
+            infoDiv.innerText = `Badge: ${id}\nTotale questo badge: ${conteggio}`;
             
-            if (navigator.vibrate) navigator.vibrate(successo ? 200 : [100, 50, 100]);
+            if (navigator.vibrate) navigator.vibrate(200);
 
             setTimeout(() => {
                 ripristinaSchermataStato();
@@ -182,8 +164,34 @@
             infoDiv.style.color = "#ffffff"; 
             statusDiv.innerText = "PRONTO: AVVICINA BADGE";
             infoDiv.innerText = "Scanner attivo (Offline)...";
-            aggiornaStatistiche(); // Aggiorna i dati quando torna in modalità attesa
+            aggiornaStatistiche(); 
         }
+
+        // LOGICA DEL MENU SEGRETO DI RESET (5 Clic in basso a sinistra)
+        let resetClicks = 0;
+        let resetTimer;
+
+        secretZone.addEventListener('click', () => {
+            resetClicks++;
+            clearTimeout(resetTimer);
+
+            if (resetClicks === 5) {
+                resetClicks = 0;
+                // Finestra di conferma per evitare tocchi accidentali
+                const conferma = confirm("⚠️ AZZERAMENTO TOTALI\n\nVuoi cancellare definitivamente tutta la memoria dei drink e dei badge passati?");
+                if (conferma) {
+                    localStorage.removeItem('eurospinDrinkDB');
+                    databaseLocale = {};
+                    aggiornaStatistiche();
+                    alert("Database azzerato. I contatori sono tornati a 0!");
+                }
+            } else {
+                // Se passano più di 2 secondi senza cliccare, il conteggio si azzera
+                resetTimer = setTimeout(() => {
+                    resetClicks = 0;
+                }, 2000);
+            }
+        });
     </script>
 </body>
 </html>
