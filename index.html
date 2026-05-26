@@ -43,7 +43,7 @@
             z-index: -1;
         }
 
-        /* Indicatore di Build aggiornato a b1.2 */
+        /* Indicatore di Build aggiornato a b1.3 */
         #buildVersion {
             position: absolute;
             top: 15px;
@@ -154,7 +154,7 @@
 </head>
 <body>
 
-    <div id="buildVersion">b1.2</div>
+    <div id="buildVersion">b1.3</div>
 
     <div id="status">ATTESA AVVIO</div>
     <div id="info">Premi il tasto per attivare lo scanner offline</div>
@@ -198,8 +198,10 @@
 
         let databaseLocale = JSON.parse(localStorage.getItem('eurospinDrinkDB')) || {};
         
-        // Flag di sicurezza per impedire letture anticipate
+        // Variabili di controllo di sicurezza e timeout
         let scannerAttivo = false;
+        let abortController = null;
+        let timeoutInattivita = null;
 
         function aggiornaStatistiche() {
             const badgeTotali = Object.keys(databaseLocale).length;
@@ -208,7 +210,6 @@
         }
 
         function gestisciLettura(idBadge) {
-            // Clausola di sicurezza: se lo scanner non è esplicitamente attivo, ignora tutto
             if (!scannerAttivo) return;
 
             if (databaseLocale[idBadge] !== undefined) {
@@ -220,23 +221,62 @@
             }
         }
 
+        // Avvia il countdown di 10 secondi
+        function avviaTimeoutInattivita() {
+            clearTimeout(timeoutInattivita);
+            timeoutInattivita = setTimeout(() => {
+                disattivaScannerETornaAllInizio();
+            }, 10000); 
+        }
+
+        // Funzione per spegnere l'antenna NFC hardware e ripristinare la home
+        function disattivaScannerETornaAllInizio() {
+            scannerAttivo = false;
+            clearTimeout(timeoutInattivita);
+            
+            // Spegne fisicamente l'antenna del telefono
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+            }
+            
+            startBtn.style.display = 'block';
+            statusDiv.innerText = "ATTESA AVVIO";
+            statusDiv.style.color = "#ffdd00"; 
+            infoDiv.innerText = "Premi il tasto per attivare lo scanner offline";
+            infoDiv.style.color = "#ffffff";
+            document.body.style.backgroundColor = "#004a99";
+            aggiornaStatistiche();
+        }
+
         async function avviaScannerNFC(e) {
             if (e) e.preventDefault(); 
             
             if ('NDEFReader' in window) {
                 try {
+                    // Se c'era una vecchia sessione pendente, la killa prima di iniziare
+                    if (abortController) abortController.abort();
+                    abortController = new AbortController();
+
                     const ndef = new NDEFReader();
-                    await ndef.scan();
+                    // Passiamo il segnale di abort per poter spegnere l'antenna a nostro piacimento
+                    await ndef.scan({ signal: abortController.signal });
                     
-                    // Attiviamo il flag solo DOPO che l'hardware ha risposto correttamente
                     scannerAttivo = true;
-                    
                     startBtn.style.display = 'none';
                     statusDiv.innerText = "PRONTO: AVVICINA BADGE";
                     infoDiv.innerText = "Scanner attivo (Offline)...";
                     aggiornaStatistiche();
 
+                    // Fissa il countdown iniziale dei 10 secondi
+                    avviaTimeoutInattivita();
+
                     ndef.onreading = event => {
+                        if (!scannerAttivo) return;
+                        
+                        // Blocca subito il timer dei 10 secondi per evitare che scada durante i 3 secondi di visualizzazione del risultato
+                        clearTimeout(timeoutInattivita);
+
                         const serialNumber = event.serialNumber;
                         if (navigator.vibrate) navigator.vibrate(100); 
                         gestisciLettura(serialNumber);
@@ -276,12 +316,18 @@
         }
 
         function ripristinaSchermataStato() {
+            // Se nel frattempo l'interfaccia è stata azzerata dal timeout, non fare nulla
+            if (!scannerAttivo) return;
+
             document.body.style.backgroundColor = "#004a99"; 
             statusDiv.style.color = "#ffdd00"; 
             infoDiv.style.color = "#ffffff"; 
             statusDiv.innerText = "PRONTO: AVVICINA BADGE";
             infoDiv.innerText = "Scanner attivo (Offline)...";
             aggiornaStatistiche(); 
+            
+            // Fa ripartire il countdown di 10 secondi per il prossimo badge da scansionare
+            avviaTimeoutInattivita();
         }
 
         let lastTouchEnd = 0;
@@ -320,6 +366,14 @@
             databaseLocale = {};
             resetModal.style.display = 'none';
             
+            // Spegne lo scanner durante il reset della memoria per sicurezza
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+            }
+            scannerAttivo = false;
+            clearTimeout(timeoutInattivita);
+
             document.body.style.backgroundColor = "#ffdd00"; 
             statusDiv.style.color = "#004a99";
             infoDiv.style.color = "#004a99";
@@ -327,7 +381,7 @@
             infoDiv.innerText = "Tutti i contatori sono tornati a 0";
             
             setTimeout(() => {
-                ripristinaSchermataStato();
+                disattivaScannerETornaAllInizio();
             }, 2500);
         });
     </script>
