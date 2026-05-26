@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>NFC Drink Offline - Eurospin</title>
     <style>
-        /* Blocco totale dello zoom e dello scroll nativo su tutta la PWA */
         html, body {
             margin: 0;
             padding: 0;
@@ -23,7 +22,7 @@
             display: flex; 
             flex-direction: column; 
             justify-content: center;
-            position: relative; /* Garantisce il corretto posizionamento dell'area segreta */
+            position: relative; 
             background-color: #004a99;
             background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Logo_Eurospin.svg/1200px-Logo_Eurospin.svg.png');
             background-repeat: no-repeat;
@@ -41,6 +40,18 @@
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 74, 153, 0.6); 
             z-index: -1;
+        }
+
+        /* Stile per il numero di build in alto a destra */
+        #buildVersion {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: bold;
+            z-index: 1;
+            letter-spacing: 0.5px;
         }
 
         #status { font-size: 2.2rem; font-weight: bold; margin: 20px; z-index: 1; color: #ffdd00; }
@@ -72,7 +83,6 @@
             letter-spacing: 0.5px;
         }
 
-        /* Area segreta nell'angolo in basso a sinistra */
         #secretZone {
             position: absolute;
             bottom: 0;
@@ -142,6 +152,8 @@
     </style>
 </head>
 <body>
+
+    <div id="buildVersion">b1.0</div>
 
     <div id="status">ATTESA AVVIO</div>
     <div id="info">Premi il tasto per attivare lo scanner offline</div>
@@ -257,7 +269,6 @@
             aggiornaStatistiche(); 
         }
 
-        // Forza il blocco del double-tap-to-zoom anche a livello software profondo
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function (event) {
             const now = (new Date()).getTime();
@@ -267,12 +278,11 @@
             lastTouchEnd = now;
         }, false);
 
-        // Gestione Menu Segreto tramite intercettazione Touch istantanea
         let resetClicks = 0;
         let resetTimer;
 
         secretZone.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Impedisce al browser di interpretare il gesto o fare ghost-click
+            e.preventDefault(); 
             resetClicks++;
             clearTimeout(resetTimer);
 
@@ -282,7 +292,7 @@
             } else {
                 resetTimer = setTimeout(() => {
                     resetClicks = 0;
-                }, 1500); // Finestra temporale di 1.5 secondi per completare i tocchi
+                }, 1500); 
             }
         });
 
@@ -297,14 +307,3 @@
             
             document.body.style.backgroundColor = "#ffdd00"; 
             statusDiv.style.color = "#004a99";
-            infoDiv.style.color = "#004a99";
-            statusDiv.innerText = "MEMORIA AZZERATA";
-            infoDiv.innerText = "Tutti i contatori sono tornati a 0";
-            
-            setTimeout(() => {
-                ripristinaSchermataStato();
-            }, 2500);
-        });
-    </script>
-</body>
-</html>
