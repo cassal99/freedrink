@@ -43,7 +43,7 @@
             z-index: -1;
         }
 
-        /* Indicatore di Build aggiornato a b1.1 */
+        /* Indicatore di Build aggiornato a b1.2 */
         #buildVersion {
             position: absolute;
             top: 15px;
@@ -154,7 +154,7 @@
 </head>
 <body>
 
-    <div id="buildVersion">b1.1</div>
+    <div id="buildVersion">b1.2</div>
 
     <div id="status">ATTESA AVVIO</div>
     <div id="info">Premi il tasto per attivare lo scanner offline</div>
@@ -197,6 +197,9 @@
         const confirmResetBtn = document.getElementById('confirmResetBtn');
 
         let databaseLocale = JSON.parse(localStorage.getItem('eurospinDrinkDB')) || {};
+        
+        // Flag di sicurezza per impedire letture anticipate
+        let scannerAttivo = false;
 
         function aggiornaStatistiche() {
             const badgeTotali = Object.keys(databaseLocale).length;
@@ -205,6 +208,9 @@
         }
 
         function gestisciLettura(idBadge) {
+            // Clausola di sicurezza: se lo scanner non è esplicitamente attivo, ignora tutto
+            if (!scannerAttivo) return;
+
             if (databaseLocale[idBadge] !== undefined) {
                 mostraRisultato(false, databaseLocale[idBadge], idBadge);
             } else {
@@ -214,14 +220,16 @@
             }
         }
 
-        // Funzione centralizzata di attivazione dello scanner NFC
         async function avviaScannerNFC(e) {
-            if (e) e.preventDefault(); // Impedisce conflitti di tap e ghost-click natii
+            if (e) e.preventDefault(); 
             
             if ('NDEFReader' in window) {
                 try {
                     const ndef = new NDEFReader();
                     await ndef.scan();
+                    
+                    // Attiviamo il flag solo DOPO che l'hardware ha risposto correttamente
+                    scannerAttivo = true;
                     
                     startBtn.style.display = 'none';
                     statusDiv.innerText = "PRONTO: AVVICINA BADGE";
@@ -242,7 +250,6 @@
             }
         }
 
-        // Ascolto Touch istantaneo per aggirare il blocco del CSS touch-action
         startBtn.addEventListener('touchstart', avviaScannerNFC);
         startBtn.addEventListener('click', avviaScannerNFC);
 
