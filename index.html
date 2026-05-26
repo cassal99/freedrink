@@ -43,7 +43,7 @@
             z-index: -1;
         }
 
-        /* Indicatore di Build aggiornato a b1.4 */
+        /* Indicatore di Build aggiornato a b1.5 */
         #buildVersion {
             position: absolute;
             top: 15px;
@@ -154,7 +154,7 @@
 </head>
 <body>
 
-    <div id="buildVersion">b1.4</div>
+    <div id="buildVersion">b1.5</div>
 
     <div id="status">ATTESA AVVIO</div>
     <div id="info">Premi il tasto per attivare lo scanner</div>
@@ -197,10 +197,6 @@
         const confirmResetBtn = document.getElementById('confirmResetBtn');
 
         let databaseLocale = JSON.parse(localStorage.getItem('eurospinDrinkDB')) || {};
-        
-        let scannerAttivo = false;
-        let abortController = null;
-        let timeoutInattivita = null;
 
         function aggiornaStatistiche() {
             const badgeTotali = Object.keys(databaseLocale).length;
@@ -209,8 +205,6 @@
         }
 
         function gestisciLettura(idBadge) {
-            if (!scannerAttivo) return;
-
             if (databaseLocale[idBadge] !== undefined) {
                 mostraRisultato(false, databaseLocale[idBadge], idBadge);
             } else {
@@ -220,54 +214,20 @@
             }
         }
 
-        function avviaTimeoutInattivita() {
-            clearTimeout(timeoutInattivita);
-            timeoutInattivita = setTimeout(() => {
-                disattivaScannerETornaAllInizio();
-            }, 10000); 
-        }
-
-        function disattivaScannerETornaAllInizio() {
-            scannerAttivo = false;
-            clearTimeout(timeoutInattivita);
-            
-            if (abortController) {
-                abortController.abort();
-                abortController = null;
-            }
-            
-            startBtn.style.display = 'block';
-            statusDiv.innerText = "ATTESA AVVIO";
-            statusDiv.style.color = "#ffdd00"; 
-            infoDiv.innerText = "Premi il tasto per attivare lo scanner";
-            infoDiv.style.color = "#ffffff";
-            document.body.style.backgroundColor = "#004a99";
-            aggiornaStatistiche();
-        }
-
         async function avviaScannerNFC(e) {
             if (e) e.preventDefault(); 
             
             if ('NDEFReader' in window) {
                 try {
-                    if (abortController) abortController.abort();
-                    abortController = new AbortController();
-
                     const ndef = new NDEFReader();
-                    await ndef.scan({ signal: abortController.signal });
+                    await ndef.scan();
                     
-                    scannerAttivo = true;
                     startBtn.style.display = 'none';
                     statusDiv.innerText = "PRONTO: AVVICINA BADGE";
                     infoDiv.innerText = "Scanner attivo...";
                     aggiornaStatistiche();
 
-                    avviaTimeoutInattivita();
-
                     ndef.onreading = event => {
-                        if (!scannerAttivo) return;
-                        
-                        clearTimeout(timeoutInattivita);
                         const serialNumber = event.serialNumber;
                         if (navigator.vibrate) navigator.vibrate(100); 
                         gestisciLettura(serialNumber);
@@ -288,16 +248,14 @@
             if (successo) {
                 document.body.style.backgroundColor = "#2ecc71"; 
                 statusDiv.style.color = "#ffffff";
-                infoDiv.style.color = "#ffffff";
                 statusDiv.innerText = "+3 DRINK AGGIUNTI!";
-                infoDiv.innerText = ""; // Rimosse le info sul badge passato
+                infoDiv.innerText = ""; 
                 if (navigator.vibrate) navigator.vibrate(200);
             } else {
                 document.body.style.backgroundColor = "#e74c3c"; 
                 statusDiv.style.color = "#ffffff";
-                infoDiv.style.color = "#ffffff";
                 statusDiv.innerText = "GIÀ PASSATO!";
-                infoDiv.innerText = ""; // Rimosse le info sul badge passato
+                infoDiv.innerText = ""; 
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             }
 
@@ -307,17 +265,12 @@
         }
 
         function ripristinaSchermataStato() {
-            if (!scannerAttivo) return;
-
             document.body.style.backgroundColor = "#004a99"; 
             statusDiv.style.color = "#ffdd00"; 
             infoDiv.style.color = "#ffffff"; 
             statusDiv.innerText = "PRONTO: AVVICINA BADGE";
             infoDiv.innerText = "Scanner attivo..."; 
             aggiornaStatistiche(); 
-            
-            // Lo scanner continua a funzionare in loop per i badge successivi
-            avviaTimeoutInattivita();
         }
 
         let lastTouchEnd = 0;
@@ -356,13 +309,6 @@
             databaseLocale = {};
             resetModal.style.display = 'none';
             
-            if (abortController) {
-                abortController.abort();
-                abortController = null;
-            }
-            scannerAttivo = false;
-            clearTimeout(timeoutInattivita);
-
             document.body.style.backgroundColor = "#ffdd00"; 
             statusDiv.style.color = "#004a99";
             infoDiv.style.color = "#004a99";
@@ -370,7 +316,7 @@
             infoDiv.innerText = "Tutti i contatori sono tornati a 0";
             
             setTimeout(() => {
-                disattivaScannerETornaAllInizio();
+                ripristinaSchermataStato();
             }, 2500);
         });
     </script>
