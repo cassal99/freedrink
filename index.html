@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <link rel="manifest" href="manifest.json">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>NFC Drink Offline - Eurospin</title>
     <style>
         body { 
@@ -20,6 +20,12 @@
             background-repeat: no-repeat;
             background-position: center 15%; 
             background-size: 240px; 
+            
+            /* Blocca il pinch-to-zoom e la selezione del testo/evidenziazione fastidiosa */
+            touch-action: pan-x pan-y;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
         
         body::before {
@@ -69,7 +75,6 @@
             background: transparent;
         }
 
-        /* Schermata di reset personalizzata (Modal Eurospin) */
         .custom-modal {
             display: none;
             position: fixed;
@@ -179,11 +184,9 @@
         }
 
         function gestisciLettura(idBadge) {
-            // Se il badge esiste già in memoria significa che è un DUPLICATO
             if (databaseLocale[idBadge] !== undefined) {
                 mostraRisultato(false, databaseLocale[idBadge], idBadge);
             } else {
-                // Primo passaggio: assegna i 3 drink stabiliti
                 databaseLocale[idBadge] = 3; 
                 localStorage.setItem('eurospinDrinkDB', JSON.stringify(databaseLocale)); 
                 mostraRisultato(true, databaseLocale[idBadge], idBadge);
@@ -217,14 +220,14 @@
 
         function mostraRisultato(successo, conteggio, id) {
             if (successo) {
-                document.body.style.backgroundColor = "#2ecc71"; // Verde OK
+                document.body.style.backgroundColor = "#2ecc71"; 
                 statusDiv.style.color = "#ffffff";
                 infoDiv.style.color = "#ffffff";
                 statusDiv.innerText = "+3 DRINK AGGIUNTI!";
                 infoDiv.innerText = `Badge: ${id}\nTotale questo badge: ${conteggio}`;
                 if (navigator.vibrate) navigator.vibrate(200);
             } else {
-                document.body.style.backgroundColor = "#e74c3c"; // Rosso STOP
+                document.body.style.backgroundColor = "#e74c3c"; 
                 statusDiv.style.color = "#ffffff";
                 infoDiv.style.color = "#ffffff";
                 statusDiv.innerText = "GIÀ PASSATO!";
@@ -246,7 +249,13 @@
             aggiornaStatistiche(); 
         }
 
-        // GESTIONE MENU SEGRETO CON INTERFACCIA COORDINATA
+        // Sicurezza extra via JavaScript per bloccare il pinch multigesture (utile per alcuni dispositivi iOS/Android ostinati)
+        document.addEventListener('touchstart', function (event) {
+            if (event.touches.length > 1) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+
         let resetClicks = 0;
         let resetTimer;
 
@@ -256,7 +265,7 @@
 
             if (resetClicks === 5) {
                 resetClicks = 0;
-                resetModal.style.display = 'flex'; // Apre la finestra coordinata Eurospin
+                resetModal.style.display = 'flex'; 
             } else {
                 resetTimer = setTimeout(() => {
                     resetClicks = 0;
@@ -273,8 +282,7 @@
             databaseLocale = {};
             resetModal.style.display = 'none';
             
-            // Notifica visiva di avvenuto azzeramento integrata nell'interfaccia
-            document.body.style.backgroundColor = "#ffdd00"; // Schermata Gialla temporanea
+            document.body.style.backgroundColor = "#ffdd00"; 
             statusDiv.style.color = "#004a99";
             infoDiv.style.color = "#004a99";
             statusDiv.innerText = "MEMORIA AZZERATA";
