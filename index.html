@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>NFC Drink Offline - Eurospin</title>
     <style>
+        /* Blocco totale dello zoom e dello scroll nativo su tutta la PWA */
         html, body {
             margin: 0;
             padding: 0;
@@ -42,7 +43,7 @@
             z-index: -1;
         }
 
-        /* Stile per il numero di build in alto a destra */
+        /* Indicatore di Build aggiornato a b1.1 */
         #buildVersion {
             position: absolute;
             top: 15px;
@@ -153,7 +154,7 @@
 </head>
 <body>
 
-    <div id="buildVersion">b1.0</div>
+    <div id="buildVersion">b1.1</div>
 
     <div id="status">ATTESA AVVIO</div>
     <div id="info">Premi il tasto per attivare lo scanner offline</div>
@@ -213,7 +214,10 @@
             }
         }
 
-        startBtn.addEventListener('click', async () => {
+        // Funzione centralizzata di attivazione dello scanner NFC
+        async function avviaScannerNFC(e) {
+            if (e) e.preventDefault(); // Impedisce conflitti di tap e ghost-click natii
+            
             if ('NDEFReader' in window) {
                 try {
                     const ndef = new NDEFReader();
@@ -236,7 +240,11 @@
             } else {
                 alert("NFC non supportato su questo browser/dispositivo.");
             }
-        });
+        }
+
+        // Ascolto Touch istantaneo per aggirare il blocco del CSS touch-action
+        startBtn.addEventListener('touchstart', avviaScannerNFC);
+        startBtn.addEventListener('click', avviaScannerNFC);
 
         function mostraRisultato(successo, conteggio, id) {
             if (successo) {
@@ -307,3 +315,14 @@
             
             document.body.style.backgroundColor = "#ffdd00"; 
             statusDiv.style.color = "#004a99";
+            infoDiv.style.color = "#004a99";
+            statusDiv.innerText = "MEMORIA AZZERATA";
+            infoDiv.innerText = "Tutti i contatori sono tornati a 0";
+            
+            setTimeout(() => {
+                ripristinaSchermataStato();
+            }, 2500);
+        });
+    </script>
+</body>
+</html>
