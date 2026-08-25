@@ -160,6 +160,7 @@
     <div id="info">Premi il tasto per attivare lo scanner</div>
     <br>
     <button id="startBtn">ATTIVA SCANNER</button>
+    <button id="exportBtn" style="background: #2ecc71; color: #ffffff; margin-top: 15px;">ESPORTA DATABASE (CSV)</button>
 
     <div id="stats"></div>
     <div id="secretZone"></div>
@@ -204,6 +205,47 @@
             statsDiv.innerHTML = `👥 Badge letti: ${badgeTotali} &nbsp;|&nbsp; 🍹 Drink erogati: ${drinkTotali}`;
         }
 
+        const exportBtn = document.getElementById('exportBtn');
+
+function esportaDatabaseCSV() {
+    // 1. Recupera i dati aggiornati
+    const db = JSON.parse(localStorage.getItem('eurospinDrinkDB')) || {};
+    
+    if (Object.keys(db).length === 0) {
+        alert("Nessun dato da esportare!");
+        return;
+    }
+
+    // 2. Crea l'intestazione e le righe del file CSV
+    let csvContent = "data:text/csv;charset=utf-8,ID Badge,Drink Erogati\n";
+    
+    for (const [badgeId, drinkCount] of Object.entries(db)) {
+        csvContent += `"${badgeId}",${drinkCount}\n`;
+    }
+
+    // 3. Genera il file e avvia il download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    
+    // Nome del file con data/ora attuale
+    const dataOra = new Date().toISOString().slice(0,19).replace(/[:T]/g, "-");
+    link.setAttribute("download", `eurospin_drink_export_${dataOra}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Associa l'evento al pulsante
+if (exportBtn) {
+    exportBtn.addEventListener('click', esportaDatabaseCSV);
+    exportBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        esportaDatabaseCSV();
+    });
+}
+        
         function gestisciLettura(idBadge) {
             if (databaseLocale[idBadge] !== undefined) {
                 mostraRisultato(false, databaseLocale[idBadge], idBadge);
@@ -222,7 +264,7 @@
                     const ndef = new NDEFReader();
                     await ndef.scan();
                     
-                    startBtn.style.display = 'none';
+                    .style.display = 'none';
                     statusDiv.innerText = "PRONTO: AVVICINA BADGE";
                     infoDiv.innerText = "Scanner attivo...";
                     aggiornaStatistiche();
@@ -241,8 +283,8 @@
             }
         }
 
-        startBtn.addEventListener('touchstart', avviaScannerNFC);
-        startBtn.addEventListener('click', avviaScannerNFC);
+        .addEventListener('touchstart', avviaScannerNFC);
+        .addEventListener('click', avviaScannerNFC);
 
         function mostraRisultato(successo, conteggio, id) {
             if (successo) {
