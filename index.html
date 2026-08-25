@@ -154,16 +154,21 @@
 </head>
 <body>
 
-    <div id="buildVersion">b1.5</div>
+    <div id="buildVersion">b1.6</div>
 
     <div id="status">ATTESA AVVIO</div>
     <div id="info">Premi il tasto per attivare lo scanner</div>
-    <br>
-    <button id="startBtn">ATTIVA SCANNER</button>
-    <button id="exportBtn" style="background: #2ecc71; color: #ffffff; margin-top: 15px;">ESPORTA DATABASE (CSV)</button>
+    
+    <!-- Contenitore unico per i pulsanti -->
+    <div style="z-index: 10; display: flex; flex-direction: column; gap: 15px; margin: 20px auto 0 auto;">
+        <button id="startBtn">ATTIVA SCANNER</button>
+        <button id="exportBtn" style="background: #2ecc71; color: #ffffff;">ESPORTA CSV</button>
+    </div>
 
     <div id="stats"></div>
     <div id="secretZone"></div>
+
+    <!-- ... eventuale codice modal reset ... -->
 
     <div id="resetModal" class="custom-modal">
         <div class="modal-content">
